@@ -7,14 +7,18 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT
 
     task_list = ft.Column()
+    
+    filter_type = 'all'
 
     def load_tasks():
         task_list.controls.clear()
-        for task_id, task_text in main_db.get_tasks():
-            task_list.controls.append(view_task(task_id=task_id, task_text=task_text))
+        for task_id, task_text, completed in main_db.get_tasks(filter_type):
+            task_list.controls.append(view_task(task_id=task_id, task_text=task_text, completed=completed))
 
-    def view_task(task_id, task_text):
+    def view_task(task_id, task_text, completed=None):
         task_field = ft.TextField(value=task_text, read_only=True, expand=True)
+
+        checkbox_task = ft.Checkbox(value=bool(completed), on_change=lambda e: toggle_task(task_id=task_id, is_completed=e.control.value))
 
         def enable_edit(_):
             if task_field.read_only == True:
@@ -31,7 +35,13 @@ def main(page: ft.Page):
 
         save_button = ft.IconButton(icon=ft.Icons.SAVE, on_click=save_task)
 
-        return ft.Row([task_field, edit_button, save_button])
+        return ft.Row([checkbox_task, task_field, edit_button, save_button])
+    
+    def toggle_task(task_id, is_completed):
+        print(is_completed)
+        main_db.update_task(task_id=task_id, completed=int(is_completed))
+        print(int(is_completed))
+        load_tasks()
 
     def add_task_db(_):
         if text_input.value:
@@ -50,7 +60,18 @@ def main(page: ft.Page):
 
     main_objects = ft.Row([text_input, send_button])
 
-    page.add(main_objects, task_list)
+    def set_filter(filter_value):
+        nonlocal filter_type
+        filter_type = filter_value
+        load_tasks()
+    
+    filter_buttons = ft.Row([
+        ft.ElevatedButton('Все задачи', on_click=lambda e: set_filter('all')),
+        ft.ElevatedButton('Не готово', on_click=lambda e: set_filter('uncompleted')),
+        ft.ElevatedButton('Готово', on_click=lambda e: set_filter('completed'))
+    ], alignment=ft.MainAxisAlignment.SPACE_EVENLY)
+
+    page.add(main_objects, filter_buttons, task_list)
     load_tasks()
 
 
